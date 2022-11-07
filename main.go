@@ -63,43 +63,54 @@ func main() {
 	r.Run("localhost:8080")
 }
 
+// TODO: refactor - find a way to concat two albums - the one from db and the one from the request.
+// Or maybe there's a better logic for updating entity
 func updateAlbum(c *gin.Context, db *sql.DB) {
+	id := c.Param("id")
+
+	var dbAlbum Album
+	var requestAlbum Album
 	var albumResult Album
-	if err := c.BindJSON(&albumResult); err != nil {
-		fmt.Println("err>>>", err)
+
+	row := db.QueryRow("SELECT * FROM album WHERE id = ?", id)
+	if err := row.Scan(&dbAlbum.ID, &dbAlbum.Title, &dbAlbum.Artist, &dbAlbum.Price); err != nil {
+		if err == sql.ErrNoRows {
+
+			return
+		}
+		fmt.Println("Failed to unpack db album to variable")
 	}
-	fmt.Println("albumResult>>>", albumResult)
 
-	if albumResult.Artist != "" {
-
+	if err := c.BindJSON(&requestAlbum); err != nil {
+		fmt.Println("err on BindJson>>>", err)
 	}
 
-	// ====
+	albumResult.ID = dbAlbum.ID
 
-	// id := c.Param("id")
-	// var alb Album
+	if requestAlbum.Artist != "" {
+		albumResult.Artist = requestAlbum.Artist
+	} else {
+		albumResult.Artist = dbAlbum.Artist
+	}
 
-	// row := db.QueryRow("SELECT * FROM album WHERE id = ?", id)
-	// if err := row.Scan(&alb.Artist, &alb.Price, &alb.Title, &alb.ID); err != nil {
-	// 	if err == sql.ErrNoRows {
-	// 		fmt.Println("album not found")
-	// 	}
-	// 	fmt.Println("error>>>", err)
-	// }
-	// fmt.Println("alb>>>", alb.Artist, alb.ID, alb.Price, alb.Title)
+	if requestAlbum.Title != "" {
+		albumResult.Title = requestAlbum.Title
+	} else {
+		albumResult.Title = dbAlbum.Title
+	}
 
-	// v := reflect.ValueOf(alb)
+	if requestAlbum.Price != 0 {
+		albumResult.Price = requestAlbum.Price
+	} else {
+		albumResult.Price = dbAlbum.Price
+	}
 
-	// fmt.Println("v>>>", v.Type())
+	_, err := db.Exec("UPDATE album SET title = ?, artist = ?, price = ? WHERE id = ?", albumResult.Title, albumResult.Artist, albumResult.Price, id)
+	if err != nil {
+		fmt.Println("Failed to db.Exec UPDATE", err)
+	}
 
-	// values := make([]interface{}, v.NumField())
-
-	// for i := 0; i < v.NumField(); i++ {
-	// 	fmt.Println(v.Field(i))
-	// 	values[i] = v.Field(i).Interface()
-	// }
-
-	// fmt.Println("values>>>", values)
+	c.IndentedJSON(http.StatusOK, albumResult)
 }
 
 func getAlbums(c *gin.Context, db *sql.DB) {
@@ -228,7 +239,6 @@ func deleteAlbum(c *gin.Context, db *sql.DB) {
 // 	return albums, nil
 // }
 
-// TODO:
 // $ export DBUSER=root
 // $ export DBPASS=***
 
