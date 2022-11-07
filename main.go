@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,10 +13,10 @@ import (
 )
 
 type Album struct {
-	ID     int64   `json:"id"`
-	Title  string  `json:"title"`
-	Artist string  `json:"artist"`
-	Price  float32 `json:"price"`
+	ID     int64   `json:"id,omitempty"`
+	Title  string  `json:"title,omitempty"`
+	Artist string  `json:"artist,omitempty"`
+	Price  float32 `json:"price,omitempty"`
 }
 
 func main() {
@@ -63,8 +64,7 @@ func main() {
 	r.Run("localhost:8080")
 }
 
-// TODO: refactor - find a way to concat two albums - the one from db and the one from the request.
-// Or maybe there's a better logic for updating entity
+// TODO: refactor - maybe there's a better way to form sql query depending on what fields are present in request.body?
 func updateAlbum(c *gin.Context, db *sql.DB) {
 	id := c.Param("id")
 
@@ -75,37 +75,31 @@ func updateAlbum(c *gin.Context, db *sql.DB) {
 	row := db.QueryRow("SELECT * FROM album WHERE id = ?", id)
 	if err := row.Scan(&dbAlbum.ID, &dbAlbum.Title, &dbAlbum.Artist, &dbAlbum.Price); err != nil {
 		if err == sql.ErrNoRows {
-
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "no such album in db"})
 			return
 		}
 		fmt.Println("Failed to unpack db album to variable")
+		return
 	}
 
 	if err := c.BindJSON(&requestAlbum); err != nil {
 		fmt.Println("err on BindJson>>>", err)
 	}
 
-	albumResult.ID = dbAlbum.ID
-
-	if requestAlbum.Artist != "" {
-		albumResult.Artist = requestAlbum.Artist
-	} else {
-		albumResult.Artist = dbAlbum.Artist
+	jsonDB, err := json.Marshal(dbAlbum)
+	if err != nil {
+		fmt.Println("error on 1 marshal", err)
 	}
+	json.Unmarshal(jsonDB, &albumResult)
 
-	if requestAlbum.Title != "" {
-		albumResult.Title = requestAlbum.Title
-	} else {
-		albumResult.Title = dbAlbum.Title
+	jsonRequest, err := json.Marshal(requestAlbum)
+	if err != nil {
+		fmt.Println("error on 2 marshal", err)
+		return
 	}
+	json.Unmarshal(jsonRequest, &albumResult)
 
-	if requestAlbum.Price != 0 {
-		albumResult.Price = requestAlbum.Price
-	} else {
-		albumResult.Price = dbAlbum.Price
-	}
-
-	_, err := db.Exec("UPDATE album SET title = ?, artist = ?, price = ? WHERE id = ?", albumResult.Title, albumResult.Artist, albumResult.Price, id)
+	_, err = db.Exec("UPDATE album SET title = ?, artist = ?, price = ? WHERE id = ?", albumResult.Title, albumResult.Artist, albumResult.Price, id)
 	if err != nil {
 		fmt.Println("Failed to db.Exec UPDATE", err)
 	}
