@@ -203,43 +203,15 @@ func deleteAlbum(c *gin.Context, db *sql.DB) {
 	c.Status(200)
 }
 
-// ====================
-
-// func getAlbumsByArtist(artist string) ([]Album, error) {
-// 	var albums []Album
-
-// 	rows, err := db.Query("SELECT * FROM album WHERE artist = ?", artist)
-
-// 	if err != nil {
-// 		return nil, fmt.Errorf("albumsByArtist %q: %v", artist, err)
-// 	}
-
-// 	defer rows.Close()
-
-// 	for rows.Next() {
-// 		var alb Album
-
-// 		if err := rows.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
-// 			return nil, fmt.Errorf("albumsByArtist %q: %v", artist, err)
-// 		}
-
-// 		albums = append(albums, alb)
-// 	}
-
-// 	if err := rows.Err(); err != nil {
-// 		return nil, fmt.Errorf("albumsByArtist %q: %v\n", artist, err)
-// 	}
-
-// 	return albums, nil
-// }
-
 // $ export DBUSER=root
 // $ export DBPASS=***
 
-// TODO: move functions related to db to another file
+// TODO: move functions related to db to another file?
 
 // TODO: create Docker container with mysql
 
 // TODO: add README
 
-// TODO: add another CRUD operations
+// TODO: add pagination
+
+// TODO: add filters, sorts
