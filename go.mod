@@ -1,4 +1,4 @@
-module example/data-access
+module example/albums-api
 
 go 1.19
 
